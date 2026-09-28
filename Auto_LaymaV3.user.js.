@@ -1,0 +1,127 @@
+// ==UserScript==
+// @name         Auto Layma V3 - Bypass & 2FA
+// @namespace    http://tampermonkey.net/
+// @version      3.0
+// @description  Tự động lấy link Quest, bỏ qua nhập thủ công và xử lý xác minh 2 bước
+// @author       YourName
+// @match        *://layma.net/*
+// @match        *://*.layma.net/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Cấu hình thời gian chờ (ms)
+    const WAIT_TIME = 3000;
+
+    // Hàm chờ element xuất hiện
+    function waitForElement(selector, timeout = 10000) {
+        return new Promise((resolve, reject) => {
+            const startTime = Date.now();
+            const interval = setInterval(() => {
+                const element = document.querySelector(selector);
+                if (element) {
+                    clearInterval(interval);
+                    resolve(element);
+                } else if (Date.now() - startTime > timeout) {
+                    clearInterval(interval);
+                    reject(new Error(`Không tìm thấy element: ${selector}`));
+                }
+            }, 500);
+        });
+    }
+
+    // Hàm lấy link Quest tự động (Bạn cần thay thế logic này)
+    function getAutoQuestLink() {
+        // TODO: Thay thế bằng logic lấy link thực tế từ API hoặc DOM của Layma
+        // Ví dụ: return document.querySelector('.quest-link-hidden').value;
+        
+        // Tạm thời trả về link mẫu (Bạn cần sửa)
+        console.log("Đang cố gắng lấy link tự động...");
+        return null; 
+    }
+
+    // Hàm xử lý xác minh 2 bước
+    async function handle2FAVerification() {
+        console.log("Bắt đầu xử lý xác minh 2 bước...");
+        
+        try {
+            // 1. Chờ form xác minh xuất hiện
+            // Thay '.verification-form' bằng class thực tế của form xác minh
+            await waitForElement('.verification-form', 15000); 
+
+            // 2. Kiểm tra xem có phải Captcha không
+            if (document.querySelector('iframe[src*="hcaptcha"]') || document.querySelector('.g-recaptcha')) {
+                console.log("Phát hiện Captcha. Cần giải thủ công hoặc tích hợp API.");
+                // TODO: Tích hợp API giải captcha tại đây nếu cần
+                return;
+            }
+
+            // 3. Kiểm tra nếu là xác minh qua link (như trong ảnh)
+            const verifyLinkBtn = document.querySelector('a.verify-link, button.verify-link');
+            if (verifyLinkBtn) {
+                console.log("Tìm thấy nút xác minh link. Đang click...");
+                verifyLinkBtn.click();
+                return;
+            }
+
+            // 4. Kiểm tra nếu là nhập mã OTP
+            const otpInput = document.querySelector('input[name="otp"], input[placeholder*="mã"]');
+            if (otpInput) {
+                console.log("Yêu cầu nhập OTP. Script không thể tự động nhập nếu không có nguồn OTP.");
+                // TODO: Tự động lấy OTP từ email/telegram nếu có
+            }
+
+        } catch (error) {
+            console.error("Lỗi trong quá trình xác minh 2 bước:", error);
+        }
+    }
+
+    // Hàm chính để bypass form nhập thủ công
+    async function bypassManualInput() {
+        console.log("Bắt đầu quá trình Bypass...");
+
+        // 1. Thử lấy link tự động
+        const autoLink = getAutoQuestLink();
+
+        if (autoLink) {
+            console.log("Đã lấy được link tự động:", autoLink);
+            
+            // Tìm ô input nhập link thủ công (dựa trên ảnh)
+            const manualInput = document.querySelector('input[placeholder="https://..."]');
+            if (manualInput) {
+                manualInput.value = autoLink;
+                console.log("Đã điền link vào ô input.");
+            }
+
+            // Tìm và click nút "Tiếp tục với link này"
+            const continueBtn = Array.from(document.querySelectorAll('button')).find(
+                btn => btn.textContent.includes('Tiếp tục với link này')
+            );
+            
+            if (continueBtn) {
+                console.log("Đang click nút Tiếp tục...");
+                continueBtn.click();
+                
+                // Sau khi click, chờ một chút rồi xử lý 2FA
+                setTimeout(() => {
+                    handle2FAVerification();
+                }, WAIT_TIME);
+            } else {
+                console.log("Không tìm thấy nút Tiếp tục.");
+            }
+
+        } else {
+            console.log("Không thể lấy link tự động. Script sẽ dừng để tránh lỗi.");
+            // Bạn có thể thêm thông báo cho người dùng ở đây
+        }
+    }
+
+    // Chạy script sau khi trang load xong
+    window.addEventListener('load', () => {
+        // Đợi một chút để các element render
+        setTimeout(bypassManualInput, 2000);
+    });
+
+})();
